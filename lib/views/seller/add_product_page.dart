@@ -21,7 +21,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final _stockController = TextEditingController();
   // We use a placeholder URL since image upload is not implemented
   final _imageUrlController = TextEditingController(
-      text: 'https://placehold.co/600x400/00D100/FFFFFF?text=New+Product');
+    text: 'https://placehold.co/600x400/00D100/FFFFFF?text=New+Product',
+  );
 
   String _selectedCategory = 'Food';
   final List<String> _categories = ['Food', 'Fashion', 'Crafts'];
@@ -43,13 +44,16 @@ class _AddProductPageState extends State<AddProductPage> {
       _formKey.currentState!.save();
 
       // Get providers (listen: false because we are in a method)
-      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       // Get the shop name from the logged-in seller
       // (This mock logic will be replaced by real auth data)
       final String sellerShopName =
-      authProvider.currentUser?.email == 'seller@test.com'
+          authProvider.currentUser?.email == 'seller@test.com'
           ? 'Java Crafts'
           : 'My New Shop';
 
@@ -81,10 +85,7 @@ class _AddProductPageState extends State<AddProductPage> {
       appBar: AppBar(
         title: const Text('Add New Product'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveForm,
-          ),
+          IconButton(icon: const Icon(Icons.save), onPressed: _saveForm),
         ],
       ),
       body: SingleChildScrollView(
@@ -126,8 +127,10 @@ class _AddProductPageState extends State<AddProductPage> {
                       icon: Icons.attach_money,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Enter price';
-                        if (double.tryParse(value) == null) return 'Enter valid number';
+                        if (value == null || value.isEmpty)
+                          return 'Enter price';
+                        if (double.tryParse(value) == null)
+                          return 'Enter valid number';
                         return null;
                       },
                     ),
@@ -140,8 +143,10 @@ class _AddProductPageState extends State<AddProductPage> {
                       icon: Icons.inventory_2_outlined,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Enter stock';
-                        if (int.tryParse(value) == null) return 'Enter valid number';
+                        if (value == null || value.isEmpty)
+                          return 'Enter stock';
+                        if (int.tryParse(value) == null)
+                          return 'Enter valid number';
                         return null;
                       },
                     ),
@@ -153,7 +158,9 @@ class _AddProductPageState extends State<AddProductPage> {
                 decoration: InputDecoration(
                   labelText: 'Category',
                   prefixIcon: const Icon(Icons.category_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 items: _categories.map((String category) {
                   return DropdownMenuItem<String>(
@@ -215,9 +222,7 @@ class _AddProductPageState extends State<AddProductPage> {
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         validator: validator,
       ),

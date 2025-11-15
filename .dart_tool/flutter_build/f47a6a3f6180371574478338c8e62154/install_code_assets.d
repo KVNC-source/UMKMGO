@@ -1,0 +1,1 @@
+ C:\\Penyimpanan\ Utama\\Documents\\Kuliah\\SEMESTER_5\\PENGEMBANGAN\ APLIKASI\ MOBILE\\UMKMGO\\.dart_tool\\flutter_build\\f47a6a3f6180371574478338c8e62154\\native_assets.json: 

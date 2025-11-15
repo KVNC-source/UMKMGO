@@ -21,12 +21,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
     'Kantor Sembilan, Sudirman, Jakarta Pusat, 10220',
   ];
 
-  final List<String> paymentMethods = [
+  // Only allow COD as a selectable payment method.
+  final List<String> paymentMethods = ['Bayar di Tempat (COD)'];
+
+  // Other payment methods kept for display purposes (show these as "Coming Soon").
+  final List<String> comingSoonPaymentMethods = [
     'Bank Transfer BNI',
     'Kartu Kredit/Debit',
     'E-Wallet (GoPay/OVO)',
-    'Bayar di Tempat (COD)',
   ];
+
+  final String comingSoon = "Coming Soon";
 
   final double shippingFee = 15000;
 
@@ -51,7 +56,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Checkout',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: Column(
         children: [
@@ -68,18 +76,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     value: selectedAddress,
                     icon: Icons.location_on_outlined,
                     options: availableAddresses,
-                    onSelect: (value) => setState(() => selectedAddress = value),
+                    onSelect: (value) =>
+                        setState(() => selectedAddress = value),
                   ),
                   const SizedBox(height: 20),
                   _buildSectionTitle('Metode Pembayaran'),
-                  _buildSelectionCard(
-                    context,
-                    title: 'Pilih Pembayaran',
-                    value: selectedPayment,
-                    icon: Icons.payment,
-                    options: paymentMethods,
-                    onSelect: (value) => setState(() => selectedPayment = value),
-                  ),
+                  _buildPaymentSelectionCard(context),
                   const SizedBox(height: 20),
                   _buildSectionTitle('Ringkasan Order'),
                   _buildOrderSummary(context, cart),
@@ -88,15 +90,77 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
           ),
-          _buildPaymentBar(context, totalFormatted, primaryColor, cart, isCheckoutReady),
+          _buildPaymentBar(
+            context,
+            totalFormatted,
+            primaryColor,
+            cart,
+            isCheckoutReady,
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildPaymentSelectionCard(BuildContext context) {
+    final allMethods = [...paymentMethods, ...comingSoonPaymentMethods];
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Column(
+          children: allMethods.map((method) {
+            final enabled = paymentMethods.contains(method);
+            final isSelected = selectedPayment == method;
+            return ListTile(
+              leading: Icon(
+                Icons.payment,
+                color: enabled
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey,
+              ),
+              title: Text(
+                method,
+                style: TextStyle(
+                  fontWeight: enabled ? FontWeight.w600 : FontWeight.normal,
+                  color: enabled ? null : Colors.grey,
+                ),
+              ),
+              trailing: enabled
+                  ? (isSelected
+                        ? Icon(
+                            Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
+                        : Icon(Icons.radio_button_unchecked))
+                  : Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Coming Soon',
+                        style: TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                    ),
+              onTap: enabled
+                  ? () => setState(() => selectedPayment = method)
+                  : null,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   String _formatRupiah(double amount) {
-    return 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+    return 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
   Widget _buildSectionTitle(String title) {
@@ -110,13 +174,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget _buildSelectionCard(
-      BuildContext context, {
-        required String title,
-        required String? value,
-        required IconData icon,
-        required List<String> options,
-        required ValueChanged<String?> onSelect,
-      }) {
+    BuildContext context, {
+    required String title,
+    required String? value,
+    required IconData icon,
+    required List<String> options,
+    required ValueChanged<String?> onSelect,
+  }) {
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -133,13 +197,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6))),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.color?.withOpacity(0.6),
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       value ?? 'Pilih salah satu',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: value != null ? Theme.of(context).colorScheme.onSurface : Colors.red,
+                        color: value != null
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Colors.red,
                       ),
                     ),
                   ],
@@ -153,7 +227,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  void _showSelectionDialog(BuildContext context, String title, List<String> options, ValueChanged<String?> onSelect) {
+  void _showSelectionDialog(
+    BuildContext context,
+    String title,
+    List<String> options,
+    ValueChanged<String?> onSelect,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -165,15 +244,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-            ...options.map((option) => ListTile(
-              title: Text(option),
-              onTap: () {
-                onSelect(option);
-                Navigator.pop(context);
-              },
-            )).toList(),
+            ...options
+                .map(
+                  (option) => ListTile(
+                    title: Text(option),
+                    onTap: () {
+                      onSelect(option);
+                      Navigator.pop(context);
+                    },
+                  ),
+                )
+                .toList(),
             const SizedBox(height: 10),
           ],
         );
@@ -198,7 +287,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
             _buildSummaryRow('Subtotal Produk', _formatRupiah(cart.subtotal)),
             _buildSummaryRow('Biaya Pengiriman', _formatRupiah(shippingFee)),
             const Divider(height: 20, thickness: 1.5),
-            _buildSummaryRow('Total Pembayaran', _formatRupiah(cart.subtotal + shippingFee), isTotal: true),
+            _buildSummaryRow(
+              'Total Pembayaran',
+              _formatRupiah(cart.subtotal + shippingFee),
+              isTotal: true,
+            ),
           ],
         ),
       ),
@@ -216,7 +309,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
             style: TextStyle(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               fontSize: 14, // <<< FIXED: Was 4, now 14
-              color: isTotal ? Theme.of(context).colorScheme.onSurface : Colors.grey.shade700,
+              color: isTotal
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Colors.grey.shade700,
             ),
           ),
           Text(
@@ -224,7 +319,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
             style: TextStyle(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               fontSize: isTotal ? 16 : 14,
-              color: isTotal ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+              color: isTotal
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
@@ -232,12 +329,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget _buildPaymentBar(BuildContext context, String totalFormatted, Color primaryColor, CartProvider cart, bool isCheckoutReady) {
+  Widget _buildPaymentBar(
+    BuildContext context,
+    String totalFormatted,
+    Color primaryColor,
+    CartProvider cart,
+    bool isCheckoutReady,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -246,8 +351,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Total Pembayaran', style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6))),
-              Text(totalFormatted, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(
+                'Total Pembayaran',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.color?.withOpacity(0.6),
+                ),
+              ),
+              Text(
+                totalFormatted,
+                style: TextStyle(
+                  color: primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
             ],
           ),
           SizedBox(
@@ -259,8 +379,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
               child: const Text('Buat Pesanan'),
             ),
@@ -278,8 +403,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text('Pesanan Berhasil Dibuat!', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Text(
+            'Pesanan Berhasil Dibuat!',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,7 +434,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   totalAmount: total,
                   address: selectedAddress!,
                   paymentMethod: selectedPayment!,
-                  items: cart.items.map((item) => OrderProductItem.fromCartItem(item)).toList(),
+                  items: cart.items
+                      .map((item) => OrderProductItem.fromCartItem(item))
+                      .toList(),
                 );
 
                 orderModel.addOrder(newOrder);
