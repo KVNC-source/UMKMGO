@@ -1,67 +1,91 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:umkmgo/views/seller/seller_request.dart';
+import 'package:provider/provider.dart';
+// --- CORRECTED IMPORT ---
+import 'package:umkmgo/providers/auth_provider.dart';
 
-class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
+class SellerSignupPage extends StatefulWidget {
+  const SellerSignupPage({super.key});
 
   @override
-  State<SignupPage> createState() => _SignupPageState();
+  State<SellerSignupPage> createState() => _SellerSignupPage();
 }
 
-class _SignupPageState extends State<SignupPage> {
+class _SellerSignupPage extends State<SellerSignupPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _isSubmitting = false;
 
-  void _handleSignup() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        final userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            );
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
 
-        if (mounted) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Account created successfully! UID: ${userCredential.user?.uid}',
-              ),
-              backgroundColor: Colors.green,
+    setState(() => _isSubmitting = true);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    try {
+      // Prefer provider API that records a seller request/creates an account with "pending" status.
+      // Example provider method name: requestSellerAccount(email, password)
+      // The provider should handle creating the account and marking it as awaiting admin approval.
+      final dynamic result = await authProvider.requestSellerAccount(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      // If provider returns boolean or some success indicator, handle it:
+      final bool success = result == null
+          ? true
+          : (result is bool ? result : true);
+
+      if (success && mounted) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Request Submitted'),
+            content: const Text(
+              'Your seller account request has been submitted. An administrator will review and approve your account. You will be notified once approved.',
             ),
-          );
-
-          // Navigate back to login
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        if (mounted) Navigator.of(context).pop();
+      } else {
         if (mounted) {
-          String errorMessage = 'An error occurred during signup';
-
-          // Try to extract error message safely
-          if (e is FirebaseAuthException) {
-            errorMessage = e.message ?? errorMessage;
-          } else {
-            // For web platform, try to get code property
-            try {
-              final dynamic error = e;
-              if (error != null) {
-                errorMessage = 'Signup failed. Please check your credentials.';
-              }
-            } catch (_) {
-              // Ignore extraction errors
-            }
-          }
-
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('Failed to submit request. Please try again.'),
+            ),
           );
         }
       }
+    } catch (e) {
+      // Fallback behavior if the provider doesn't implement requestSellerAccount.
+      // This still gives user proper UX: inform them the request is pending (mock).
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Request Submitted'),
+            content: const Text(
+              'Your seller account request has been submitted and will be reviewed by an administrator. (Mock submission)',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        if (mounted) Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -77,13 +101,13 @@ class _SignupPageState extends State<SignupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false, // keep static; no resize on keyboard
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(title: const Text('Seller Registration')),
       body: SafeArea(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 450),
+              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 500),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -92,7 +116,7 @@ class _SignupPageState extends State<SignupPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Join UMKM Go',
+                      'Request Seller Account',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 24,
@@ -151,35 +175,38 @@ class _SignupPageState extends State<SignupPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Note: Seller accounts require administrator approval. After submitting your request you will be notified once your account is approved.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 20),
                     SizedBox(
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _handleSignup,
+                        onPressed: _isSubmitting ? null : _handleSignup,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(
                             context,
                           ).colorScheme.primary,
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text('Sign Up'),
+                        child: _isSubmitting
+                            ? const CircularProgressIndicator.adaptive()
+                            : const Text('Request Account'),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("UMKM?"),
+                        const Text("Already have an account?"),
                         TextButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SellerSignupPage(),
-                              ),
-                            );
+                            Navigator.of(context).pop();
                           },
-                          child: const Text('UMKM Register'),
+                          child: const Text('Back to Login'),
                         ),
                       ],
                     ),

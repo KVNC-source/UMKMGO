@@ -25,9 +25,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   // List of the main pages
   static const List<Widget> _pages = <Widget>[
     ProductCatalogHome(), // Index 0: Home
-    WishlistPage(),       // Index 1: Wishlist
-    CartPage(),           // Index 2: Cart
-    ProfilePage(),        // Index 3: Profile
+    WishlistPage(), // Index 1: Wishlist
+    CartPage(), // Index 2: Cart
+    ProfilePage(), // Index 3: Profile
   ];
 
   void _onItemTapped(int index) {
@@ -44,12 +44,15 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
       'Discover Local Products',
       'My Wishlist',
       'Keranjang Saya',
-      'My Profile'
+      'My Profile',
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_pageTitles[_selectedIndex], style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _pageTitles[_selectedIndex],
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         automaticallyImplyLeading: false,
         actions: [
           if (_selectedIndex == 2)
@@ -60,7 +63,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                   const SnackBar(content: Text('Keranjang dikosongkan.')),
                 );
               },
-              child: const Text('Hapus Semua', style: TextStyle(color: Colors.red)),
+              child: const Text(
+                'Hapus Semua',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
           if (_selectedIndex != 2)
             Badge(
@@ -78,10 +84,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
             ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -137,6 +140,15 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
   final List<String> _categories = ['All', 'Food', 'Fashion', 'Crafts'];
 
   @override
+  void initState() {
+    super.initState();
+    // Fetch products when the page loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final searchBarColor = isDarkMode ? Colors.grey[800] : Colors.grey[200];
@@ -146,6 +158,8 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
 
     final productProvider = Provider.of<ProductProvider>(context);
     final allProducts = productProvider.items;
+    final isLoading = productProvider.isLoading;
+    final errorMessage = productProvider.errorMessage;
 
     final List<Product> filteredProducts;
     if (_selectedCategory == 'All') {
@@ -202,10 +216,12 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
                   ),
                   backgroundColor: chipColor,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                      side: BorderSide(
-                        color: isSelected ? Theme.of(context).colorScheme.primary : chipBorderColor,
-                      )
+                    borderRadius: BorderRadius.circular(20.0),
+                    side: BorderSide(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : chipBorderColor,
+                    ),
                   ),
                 ),
               );
@@ -213,20 +229,43 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10.0,
-              mainAxisSpacing: 10.0,
-              childAspectRatio: 0.8,
-            ),
-            itemCount: filteredProducts.length,
-            itemBuilder: (context, index) {
-              final product = filteredProducts[index];
-              return ProductCard(product: product);
-            },
-          ),
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : errorMessage.isNotEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(errorMessage),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          Provider.of<ProductProvider>(
+                            context,
+                            listen: false,
+                          ).fetchProducts();
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : filteredProducts.isEmpty
+              ? const Center(child: Text('No products available'))
+              : GridView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10.0,
+                    mainAxisSpacing: 10.0,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount: filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = filteredProducts[index];
+                    return ProductCard(product: product);
+                  },
+                ),
         ),
       ],
     );
@@ -239,8 +278,7 @@ class ProductCard extends StatelessWidget {
   const ProductCard({super.key, required this.product});
 
   String _formatRupiah(double amount) {
-    return 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+    return 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
   @override
@@ -253,7 +291,12 @@ class ProductCard extends StatelessWidget {
       elevation: 2,
       child: InkWell(
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailPage(product: product)));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProductDetailPage(product: product),
+            ),
+          );
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -262,7 +305,8 @@ class ProductCard extends StatelessWidget {
               child: Image.network(
                 product.imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.image_not_supported),
               ),
             ),
             Padding(
@@ -286,7 +330,10 @@ class ProductCard extends StatelessWidget {
                     children: [
                       Text(
                         _formatRupiah(product.price),
-                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       InkWell(
                         onTap: () {
@@ -304,7 +351,11 @@ class ProductCard extends StatelessWidget {
                             color: Theme.of(context).colorScheme.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.add, color: Colors.white, size: 18),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ],

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/product.dart';
 import '../../providers/product_provider.dart';
-import '../../providers/auth_provider.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -38,27 +38,35 @@ class _AddProductPageState extends State<AddProductPage> {
     super.dispose();
   }
 
-  void _saveForm() {
+  void _saveForm() async {
     // Validate the form
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      // Get providers (listen: false because we are in a method)
+      // Get current user from Firebase Auth
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You must be logged in to add products'),
+          ),
+        );
+        return;
+      }
+
+      // Get product provider
       final productProvider = Provider.of<ProductProvider>(
         context,
         listen: false,
       );
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Get the shop name from the logged-in seller
-      // (This mock logic will be replaced by real auth data)
+      // Use email as shop name for now (you can enhance this later)
       final String sellerShopName =
-          authProvider.currentUser?.email == 'seller@test.com'
-          ? 'Java Crafts'
-          : 'My New Shop';
+          currentUser.email?.split('@')[0] ?? 'My Shop';
 
       // Create the new Product object
       final newProduct = Product(
+        id: '', // Firestore will generate this
         name: _nameController.text,
         description: _descriptionController.text,
         imageUrl: _imageUrlController.text,
@@ -66,16 +74,27 @@ class _AddProductPageState extends State<AddProductPage> {
         category: _selectedCategory,
         shopName: sellerShopName,
         stock: int.tryParse(_stockController.text) ?? 0,
+        sellerId: currentUser.uid,
       );
 
-      // Add product to the provider
-      productProvider.addProduct(newProduct);
+      try {
+        // Add product to Firestore
+        await productProvider.addProduct(newProduct);
 
-      // Show success message and go back
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${newProduct.name} has been added.')),
-      );
-      Navigator.of(context).pop();
+        // Show success message and go back
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${newProduct.name} has been added.')),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
+        }
+      }
     }
   }
 
