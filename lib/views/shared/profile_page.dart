@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// --- CORRECTED IMPORTS ---
+// --- IMPORTS ---
 import 'package:umkmgo/providers/theme_provider.dart';
 import 'package:umkmgo/providers/order_provider.dart';
 import 'package:umkmgo/views/shared/login_page.dart';
 // -------------------------
 
-// --- BUYER PAGES (Functional Implementations) ---
+// --- HALAMAN PEMBELI (Didefinisikan di sini untuk kelengkapan) ---
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -32,7 +32,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void _saveProfile() {
     if (_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile saved! Name: ${_nameController.text}')),
+        SnackBar(
+          content: Text('Profil disimpan! Nama: ${_nameController.text}'),
+        ),
       );
       Navigator.pop(context);
     }
@@ -252,8 +254,12 @@ class LanguageSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Language Settings')),
-      body: const Center(child: Text('Option to change app language.')),
+      appBar: AppBar(
+        title: const Text('Pengaturan Bahasa'),
+      ), // <<< DITERJEMAHKAN
+      body: const Center(
+        child: Text('Pilihan untuk mengubah bahasa aplikasi.'),
+      ), // <<< DITERJEMAHKAN
     );
   }
 }
@@ -337,7 +343,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: const Text('Log Out'),
+                  child: const Text('Keluar'), // <<< DITERJEMAHKAN
                 ),
               ),
             ),
@@ -417,7 +423,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 textStyle: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              child: const Text('View/Edit Profile'),
+              child: const Text('Lihat/Edit Profil'), // <<< DITERJEMAHKAN
             ),
           ),
         ),
@@ -461,7 +467,7 @@ class _ProfilePageState extends State<ProfilePage> {
     ThemeProvider themeModel,
   ) {
     return [
-      _buildSectionHeader(context, 'SETTINGS'),
+      _buildSectionHeader(context, 'PENGATURAN'), // <<< DITERJEMAHKAN
       _buildToggleItem(
         context,
         Icons.dark_mode_outlined,
@@ -543,7 +549,7 @@ class _ProfilePageState extends State<ProfilePage> {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: activeColor,
+        activeThumbColor: activeColor,
       ),
       onTap: () {
         onChanged(!value);

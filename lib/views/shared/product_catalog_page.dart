@@ -40,9 +40,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
 
-    final List<String> _pageTitles = [
-      'Discover Local Products',
-      'My Wishlist',
+    final List<String> pageTitles = [
+      'UMKMGO',
+      'Wishlist Saya',
       'Keranjang Saya',
       'My Profile',
     ];
@@ -50,7 +50,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _pageTitles[_selectedIndex],
+          pageTitles[_selectedIndex],
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false,
@@ -126,7 +126,6 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   }
 }
 
-// --- WIDGETS FOR THE HOME PAGE ---
 
 class ProductCatalogHome extends StatefulWidget {
   const ProductCatalogHome({super.key});
@@ -142,7 +141,6 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
   @override
   void initState() {
     super.initState();
-    // Fetch products when the page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
     });
@@ -173,7 +171,7 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
+        Padding(  
           padding: const EdgeInsets.all(16.0),
           child: TextField(
             decoration: InputDecoration(

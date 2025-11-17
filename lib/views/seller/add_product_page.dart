@@ -146,10 +146,12 @@ class _AddProductPageState extends State<AddProductPage> {
                       icon: Icons.attach_money,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
+                        if (value == null || value.isEmpty) {
                           return 'Enter price';
-                        if (double.tryParse(value) == null)
+                        }
+                        if (double.tryParse(value) == null) {
                           return 'Enter valid number';
+                        }
                         return null;
                       },
                     ),
@@ -162,10 +164,12 @@ class _AddProductPageState extends State<AddProductPage> {
                       icon: Icons.inventory_2_outlined,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
+                        if (value == null || value.isEmpty) {
                           return 'Enter stock';
-                        if (int.tryParse(value) == null)
+                        }
+                        if (int.tryParse(value) == null) {
                           return 'Enter valid number';
+                        }
                         return null;
                       },
                     ),
@@ -173,7 +177,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 ],
               ),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   labelText: 'Category',
                   prefixIcon: const Icon(Icons.category_outlined),

@@ -262,7 +262,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     },
                   ),
                 )
-                .toList(),
+                ,
             const SizedBox(height: 10),
           ],
         );

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "780707182110",
+    "project_id": "umkm-go-cdfd9",
+    "storage_bucket": "umkm-go-cdfd9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780707182110:android:e9560c12e52a361420a00f",
+        "android_client_info": {
+          "package_name": "com.example.umkmgo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8PqeRp3lX7bShjZ1HVNfXCjjnBwFDbNE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
