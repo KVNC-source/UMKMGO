@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 // --- IMPORTS FOR DECOUPLED MODELS AND PROVIDERS ---
 import 'providers/cart_provider.dart';
@@ -11,10 +13,13 @@ import 'providers/auth_provider.dart'; // <<< 1. NEW IMPORT
 
 // --- IMPORT SCREENS ---
 import 'views/shared/product_catalog_page.dart';
-import 'views/shared/login_page.dart'; // <<< 2. NEW IMPORT
+import 'views/shared/login_page.dart'; // <`<< 2. NEW IMPORT
+import 'views/admin/admin_dashboard.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-void main() {
   runApp(
     MultiProvider(
       providers: [
@@ -24,7 +29,9 @@ void main() {
         ChangeNotifierProvider(create: (context) => OrderProvider()),
         ChangeNotifierProvider(create: (context) => WishlistProvider()),
         ChangeNotifierProvider(create: (context) => ProductProvider()),
-        ChangeNotifierProvider(create: (context) => AuthProvider()), // <<< 3. ADD PROVIDER
+        ChangeNotifierProvider(
+          create: (context) => AuthProvider(),
+        ), // <<< 3. ADD PROVIDER
       ],
       child: const MyApp(),
     ),
@@ -73,11 +80,15 @@ class MyApp extends StatelessWidget {
       // --- 4. CREATE THE "AUTH GATE" ---
       home: Consumer<AuthProvider>(
         builder: (context, auth, child) {
-          if (auth.isLoggedIn) {
-            return const ProductCatalogPage();
-          } else {
+          if (!auth.isLoggedIn) {
             return const LoginPage();
           }
+
+          if (auth.userRole == UserRole.admin) {
+            return const AdminDashboard();
+          }
+
+          return const ProductCatalogPage();
         },
       ),
     );
