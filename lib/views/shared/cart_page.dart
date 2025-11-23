@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+// Use relative imports for files in the same folder structure
 import '../../providers/cart_provider.dart';
-import 'checkout_page.dart'; // <<< This is the correct import
 import '../../models/cart_item.dart';
+import 'checkout_page.dart'; // <<< RELATIVE IMPORT
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -12,7 +13,6 @@ class CartPage extends StatelessWidget {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final cart = Provider.of<CartProvider>(context);
 
-    // --- Group Cart Items by Shop Name ---
     final itemsByShop = <String, List<CartItem>>{};
     for (var item in cart.items) {
       final shopName = item.product.shopName;
@@ -21,13 +21,11 @@ class CartPage extends StatelessWidget {
       }
       itemsByShop[shopName]!.add(item);
     }
-    // --------------------------------------------------
 
     final subtotalFormatted = cart.subtotal.toStringAsFixed(0).replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
 
     return Scaffold(
-      // AppBar was removed to prevent double header
       body: cart.items.isEmpty
           ? Center(
         child: Text(
@@ -43,18 +41,16 @@ class CartPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- Render Sections based on Grouping ---
-                  ...itemsByShop.entries.map((entry) { // <<< .toList() REMOVED
+                  ...itemsByShop.entries.map((entry) {
                     final shopName = entry.key;
                     final shopItems = entry.value;
-
                     final isLastShop = entry.key == itemsByShop.keys.last;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CartPage._buildShopHeader(context, shopName, primaryColor),
-                        ...shopItems.map((item) => CartPage._buildCartItem(context, item, primaryColor)), // <<< .toList() REMOVED
+                        ...shopItems.map((item) => CartPage._buildCartItem(context, item, primaryColor)),
                         if (!isLastShop) ...[
                           const SizedBox(height: 15),
                           const Divider(height: 1, thickness: 1, color: Colors.black12),
@@ -63,7 +59,6 @@ class CartPage extends StatelessWidget {
                       ],
                     );
                   }),
-                  // --------------------------------------------------
                 ],
               ),
             ),
@@ -74,8 +69,6 @@ class CartPage extends StatelessWidget {
     );
   }
 
-  // <<< _showSnackbar function was here and has been REMOVED >>>
-
   static Widget _buildShopHeader(BuildContext context, String shopName, Color primaryColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,10 +77,7 @@ class CartPage extends StatelessWidget {
           children: [
             Icon(Icons.storefront, color: primaryColor),
             const SizedBox(width: 8),
-            Text(
-              shopName.trim(),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
+            Text(shopName.trim(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
         const Padding(
@@ -110,23 +100,15 @@ class CartPage extends StatelessWidget {
     if (item.product.imageUrl.isNotEmpty && Uri.tryParse(item.product.imageUrl)?.isAbsolute == true) {
       imageWidget = Image.network(
         item.product.imageUrl,
-        width: 80,
-        height: 80,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 80,
-            height: 80,
-            color: Colors.grey.shade200,
-            child: Icon(Icons.shopping_bag_outlined, color: Colors.grey.shade600, size: 40),
-          );
-        },
+        width: 80, height: 80, fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: 80, height: 80, color: Colors.grey.shade200,
+          child: Icon(Icons.shopping_bag_outlined, color: Colors.grey.shade600, size: 40),
+        ),
       );
     } else {
       imageWidget = Container(
-        width: 80,
-        height: 80,
-        color: Colors.grey.shade200,
+        width: 80, height: 80, color: Colors.grey.shade200,
         child: Icon(Icons.shopping_bag_outlined, color: Colors.grey.shade600, size: 40),
       );
     }
@@ -136,10 +118,7 @@ class CartPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: imageWidget,
-          ),
+          ClipRRect(borderRadius: BorderRadius.circular(8), child: imageWidget),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -160,7 +139,6 @@ class CartPage extends StatelessWidget {
 
   static Widget _buildQuantityControl(BuildContext context, CartItem item, Color primaryColor) {
     final cart = Provider.of<CartProvider>(context, listen: false);
-
     return SizedBox(
       width: 100,
       child: Row(
@@ -170,25 +148,16 @@ class CartPage extends StatelessWidget {
             onTap: () => cart.decrementQuantity(item.product),
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300),
-              ),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade300)),
               child: Icon(Icons.remove, size: 18, color: primaryColor),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-          ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0), child: Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold))),
           InkWell(
             onTap: () => cart.incrementQuantity(item.product),
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: primaryColor,
-              ),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: primaryColor),
               child: const Icon(Icons.add, size: 18, color: Colors.white),
             ),
           ),
@@ -201,7 +170,7 @@ class CartPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 5)],
       ),
       child: Row(
@@ -227,7 +196,7 @@ class CartPage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => const CheckoutPage()),
                 );
               },
-              style: ElevatedButton.styleFrom( // <<< This is where the 'stylefrom' error was
+              style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

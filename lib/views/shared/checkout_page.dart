@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../models/order.dart';
+import '../../providers/auth_provider.dart';
+import '../../models/address.dart';
+import 'manage_address_page.dart';
 import 'dart:math';
 
 class CheckoutPage extends StatefulWidget {
@@ -13,40 +16,41 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  String? selectedAddress;
+  Address? selectedAddress;
   String? selectedPayment;
 
-  final List<String> availableAddresses = [
-    'Jl. Kenangan No. 12, Jakarta Selatan, 12780',
-    'Kantor Sembilan, Sudirman, Jakarta Pusat, 10220',
+  // --- LOGIKA BARU: Daftar Pembayaran ---
+  final List<Map<String, dynamic>> paymentMethods = [
+    {'name': 'Bayar di Tempat (COD)', 'active': true},
+    {'name': 'Bank Transfer BNI (Coming Soon)', 'active': false},
+    {'name': 'Kartu Kredit/Debit (Coming Soon)', 'active': false},
+    {'name': 'E-Wallet (Coming Soon)', 'active': false},
   ];
-
-  final List<String> paymentMethods = [
-    'Bank Transfer BNI',
-    'Kartu Kredit/Debit',
-    'E-Wallet (GoPay/OVO)',
-    'Bayar di Tempat (COD)',
-  ];
+  // --------------------------------------
 
   final double shippingFee = 15000;
+  bool _isProcessing = false;
 
   @override
   void initState() {
     super.initState();
-    selectedAddress = availableAddresses.first;
-    selectedPayment = paymentMethods.first;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser != null && authProvider.currentUser!.addresses.isNotEmpty) {
+      selectedAddress = authProvider.currentUser!.addresses.first;
+    }
+    // Set default ke yang aktif (COD)
+    selectedPayment = paymentMethods.firstWhere((m) => m['active'] == true)['name'] as String;
   }
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final cart = Provider.of<CartProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final availableAddresses = authProvider.currentUser?.addresses ?? [];
 
-    final subtotal = cart.subtotal;
-    final total = subtotal + shippingFee;
-
+    final total = cart.subtotal + shippingFee;
     final totalFormatted = _formatRupiah(total);
-
     final isCheckoutReady = selectedAddress != null && selectedPayment != null;
 
     return Scaffold(
@@ -62,7 +66,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSectionTitle('Alamat Pengiriman'),
-                  _buildSelectionCard(
+                  _buildAddressSelectionCard(
                     context,
                     title: 'Pilih Alamat',
                     value: selectedAddress,
@@ -72,13 +76,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   const SizedBox(height: 20),
                   _buildSectionTitle('Metode Pembayaran'),
-                  _buildSelectionCard(
+                  _buildPaymentSelectionCard(
                     context,
                     title: 'Pilih Pembayaran',
                     value: selectedPayment,
                     icon: Icons.payment,
-                    options: paymentMethods,
-                    onSelect: (value) => setState(() => selectedPayment = value),
                   ),
                   const SizedBox(height: 20),
                   _buildSectionTitle('Ringkasan Order'),
@@ -109,19 +111,61 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget _buildSelectionCard(
+  Widget _buildAddressSelectionCard(
       BuildContext context, {
         required String title,
-        required String? value,
+        required Address? value,
         required IconData icon,
-        required List<String> options,
-        required ValueChanged<String?> onSelect,
+        required List<Address> options,
+        required ValueChanged<Address?> onSelect,
       }) {
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () => _showSelectionDialog(context, title, options, onSelect),
+        onTap: () => _showAddressSelectionDialog(context, title, options, onSelect),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6))),
+                    const SizedBox(height: 4),
+                    Text(
+                      value?.fullAddress ?? 'Pilih atau tambah alamat',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: value != null ? Theme.of(context).colorScheme.onSurface : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentSelectionCard(
+      BuildContext context, {
+        required String title,
+        required String? value,
+        required IconData icon,
+      }) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _showPaymentSelectionDialog(context, title),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -153,27 +197,59 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  void _showSelectionDialog(BuildContext context, String title, List<String> options, ValueChanged<String?> onSelect) {
+  void _showAddressSelectionDialog(BuildContext context, String title, List<Address> options, ValueChanged<Address?> onSelect) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Padding(padding: const EdgeInsets.all(16.0), child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            ListTile(
+              leading: Icon(Icons.add_location_alt_outlined, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Tambah Alamat Baru'),
+              onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageAddressPage())); },
             ),
+            const Divider(),
             ...options.map((option) => ListTile(
-              title: Text(option),
-              onTap: () {
-                onSelect(option);
-                Navigator.pop(context);
-              },
+              leading: Icon(option.label.toLowerCase() == 'rumah' ? Icons.home_outlined : Icons.business_outlined),
+              title: Text(option.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(option.fullAddress),
+              onTap: () { onSelect(option); Navigator.pop(context); },
             )).toList(),
+            const SizedBox(height: 10),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPaymentSelectionDialog(BuildContext context, String title) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(padding: const EdgeInsets.all(16.0), child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            // --- LOGIKA BARU: Hanya render yang aktif atau beri visual 'disabled' ---
+            ...paymentMethods.map((method) {
+              final bool isActive = method['active'];
+              return ListTile(
+                title: Text(
+                  method['name'],
+                  style: TextStyle(color: isActive ? Theme.of(context).colorScheme.onSurface : Colors.grey),
+                ),
+                enabled: isActive, // Nonaktifkan klik jika tidak aktif
+                trailing: isActive ? null : const Text('Coming Soon', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                onTap: isActive ? () {
+                  setState(() => selectedPayment = method['name']);
+                  Navigator.pop(context);
+                } : null,
+              );
+            }).toList(),
             const SizedBox(height: 10),
           ],
         );
@@ -190,10 +266,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${cart.items.length} Barang (${cart.totalQuantity} Total Unit)',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            Text('${cart.items.length} Barang (${cart.totalQuantity} Total Unit)', style: const TextStyle(fontWeight: FontWeight.w600)),
             const Divider(),
             _buildSummaryRow('Subtotal Produk', _formatRupiah(cart.subtotal)),
             _buildSummaryRow('Biaya Pengiriman', _formatRupiah(shippingFee)),
@@ -211,22 +284,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              fontSize: 14, // <<< FIXED: Was 4, now 14
-              color: isTotal ? Theme.of(context).colorScheme.onSurface : Colors.grey.shade700,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-              fontSize: isTotal ? 16 : 14,
-              color: isTotal ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
+          Text(label, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal, fontSize: 14, color: isTotal ? Theme.of(context).colorScheme.onSurface : Colors.grey.shade700)),
+          Text(value, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.w500, fontSize: isTotal ? 16 : 14, color: isTotal ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );
@@ -253,16 +312,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
           SizedBox(
             height: 45,
             child: ElevatedButton(
-              onPressed: isCheckoutReady
-                  ? () => _showOrderConfirmation(context, cart)
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              child: const Text('Buat Pesanan'),
+              onPressed: (isCheckoutReady && !_isProcessing) ? () => _showOrderConfirmation(context, cart) : null,
+              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: _isProcessing
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Buat Pesanan'),
             ),
           ),
         ],
@@ -272,43 +326,68 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   void _showOrderConfirmation(BuildContext context, CartProvider cart) {
     final orderModel = Provider.of<OrderProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final total = cart.subtotal + shippingFee;
+
+    // --- LOGIKA BARU: Tentukan status awal berdasarkan metode pembayaran ---
+    final initialStatus = (selectedPayment != null && selectedPayment!.contains('COD'))
+        ? 'Pesanan Diproses'
+        : 'Menunggu Pembayaran';
+    // ------------------------------------------------------------------------
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text('Pesanan Berhasil Dibuat!', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+          title: Text('Konfirmasi Pesanan', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Terima kasih atas pesanan Anda.'),
+              const Text('Pastikan pesanan Anda sudah benar.'),
               const SizedBox(height: 10),
               Text('Total: ${_formatRupiah(total)}'),
-              Text('Alamat: $selectedAddress'),
+              Text('Alamat: ${selectedAddress?.fullAddress}'),
               Text('Pembayaran: $selectedPayment'),
             ],
           ),
           actions: <Widget>[
+            TextButton(child: const Text('Batal'), onPressed: () => Navigator.of(dialogContext).pop()),
             TextButton(
-              child: const Text('Lanjut Belanja'),
-              onPressed: () {
-                final newOrder = Order(
-                  orderId: 'INV-${Random().nextInt(99999)}',
-                  date: DateTime.now(),
-                  totalAmount: total,
-                  address: selectedAddress!,
-                  paymentMethod: selectedPayment!,
-                  items: cart.items.map((item) => OrderProductItem.fromCartItem(item)).toList(),
-                );
+              child: const Text('Beli Sekarang'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                setState(() { _isProcessing = true; });
 
-                orderModel.addOrder(newOrder);
-                cart.clearCart();
+                try {
+                  final currentUser = authProvider.currentUser;
+                  if (currentUser == null) throw Exception("User not logged in");
 
-                Navigator.of(dialogContext).pop(); // Close dialog
-                Navigator.of(context).pop(); // Close checkout page
+                  final newOrder = Order(
+                    orderId: 'INV-${Random().nextInt(99999)}',
+                    buyerId: currentUser.uid,
+                    date: DateTime.now(),
+                    totalAmount: total,
+                    address: selectedAddress!.fullAddress,
+                    paymentMethod: selectedPayment!,
+                    status: initialStatus, // <<< Status otomatis di-set di sini
+                    items: cart.items.map((item) => OrderProductItem.fromCartItem(item)).toList(),
+                  );
+
+                  await orderModel.placeOrder(newOrder, currentUser.uid);
+                  cart.clearCart();
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pesanan berhasil dibuat!')));
+                    Navigator.of(context).pop();
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat pesanan: $e')));
+                } finally {
+                  if (mounted) setState(() { _isProcessing = false; });
+                }
               },
             ),
           ],

@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// --- CORRECTED IMPORTS (assuming project name is 'umkmgo') ---
-import 'package:umkmgo/models/product.dart';
-import 'package:umkmgo/providers/cart_provider.dart';
-import 'package:umkmgo/providers/product_provider.dart';
-import 'package:umkmgo/views/shared/cart_page.dart';
-import 'package:umkmgo/views/shared/profile_page.dart';
-import 'package:umkmgo/views/shared/product_detail.dart';
-import 'package:umkmgo/views/shared/wishlist_page.dart';
-// -----------------------------------------------------------
+// --- RELATIVE IMPORTS ---
+import '../../models/product.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/product_provider.dart';
+import 'cart_page.dart';       // <<< RELATIVE
+import 'profile_page.dart';    // <<< RELATIVE
+import 'product_detail.dart';  // <<< RELATIVE
+import 'wishlist_page.dart';   // <<< RELATIVE
+// ------------------------
 
-/// This is now the main navigation shell for the app.
 class ProductCatalogPage extends StatefulWidget {
   const ProductCatalogPage({super.key});
 
@@ -20,14 +19,14 @@ class ProductCatalogPage extends StatefulWidget {
 }
 
 class _ProductCatalogPageState extends State<ProductCatalogPage> {
-  int _selectedIndex = 0; // Current page index
+  int _selectedIndex = 0;
 
-  // List of the main pages
-  static const List<Widget> _pages = <Widget>[
-    ProductCatalogHome(), // Index 0: Home
-    WishlistPage(),       // Index 1: Wishlist
-    CartPage(),           // Index 2: Cart
-    ProfilePage(),        // Index 3: Profile
+  // Removed 'const' here to avoid constructor issues if sub-pages aren't const
+  static final List<Widget> _pages = [
+    const ProductCatalogHome(),
+    const WishlistPage(),
+    const CartPage(),
+    const ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -41,8 +40,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
     final cart = Provider.of<CartProvider>(context);
 
     final List<String> _pageTitles = [
-      'UMKMGO',
-      'Wishlist Saya',
+      'Discover Local Products',
+      'My Wishlist',
       'Keranjang Saya',
       'My Profile'
     ];
@@ -123,8 +122,6 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   }
 }
 
-// --- WIDGETS FOR THE HOME PAGE ---
-
 class ProductCatalogHome extends StatefulWidget {
   const ProductCatalogHome({super.key});
 
@@ -144,96 +141,100 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
     final chipBorderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
     final unselectedChipTextColor = isDarkMode ? Colors.white70 : Colors.black;
 
-    final productProvider = Provider.of<ProductProvider>(context);
-    final allProducts = productProvider.items;
+    return Consumer<ProductProvider>(
+      builder: (context, productProvider, child) {
+        final allProducts = productProvider.items;
 
-    final List<Product> filteredProducts;
-    if (_selectedCategory == 'All') {
-      filteredProducts = allProducts;
-    } else {
-      filteredProducts = allProducts
-          .where((product) => product.category == _selectedCategory)
-          .toList();
-    }
+        final List<Product> filteredProducts;
+        if (_selectedCategory == 'All') {
+          filteredProducts = allProducts;
+        } else {
+          filteredProducts = allProducts
+              .where((product) => product.category == _selectedCategory)
+              .toList();
+        }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'What are you looking for today?',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: searchBarColor,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 50,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final isSelected = category == _selectedCategory;
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: ChoiceChip(
-                  label: Text(category),
-                  selected: isSelected,
-                  onSelected: (bool selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    }
-                  },
-                  selectedColor: Theme.of(context).colorScheme.primary,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : unselectedChipTextColor,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'What are you looking for today?',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide.none,
                   ),
-                  backgroundColor: chipColor,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                      side: BorderSide(
-                        color: isSelected ? Theme.of(context).colorScheme.primary : chipBorderColor,
-                      )
-                  ),
+                  filled: true,
+                  fillColor: searchBarColor,
                 ),
-              );
-            },
-          ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10.0,
-              mainAxisSpacing: 10.0,
-              childAspectRatio: 0.8,
+              ),
             ),
-            itemCount: filteredProducts.length,
-            itemBuilder: (context, index) {
-              final product = filteredProducts[index];
-              return ProductCard(product: product);
-            },
-          ),
-        ),
-      ],
+            SizedBox(
+              height: 50,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final isSelected = category == _selectedCategory;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(category),
+                      selected: isSelected,
+                      onSelected: (bool selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        }
+                      },
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : unselectedChipTextColor,
+                      ),
+                      backgroundColor: chipColor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20.0),
+                          side: BorderSide(
+                            color: isSelected ? Theme.of(context).colorScheme.primary : chipBorderColor,
+                          )
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Expanded(
+              child: filteredProducts.isEmpty
+                  ? const Center(child: Text("No products found"))
+                  : GridView.builder(
+                padding: const EdgeInsets.all(16.0),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10.0,
+                  mainAxisSpacing: 10.0,
+                  childAspectRatio: 0.8,
+                ),
+                itemCount: filteredProducts.length,
+                itemBuilder: (context, index) {
+                  final product = filteredProducts[index];
+                  return ProductCard(product: product);
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-/// Reusable Product Card Widget
 class ProductCard extends StatelessWidget {
   final Product product;
   const ProductCard({super.key, required this.product});
@@ -261,6 +262,7 @@ class ProductCard extends StatelessWidget {
             Expanded(
               child: Image.network(
                 product.imageUrl,
+                key: ValueKey(product.imageUrl),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
               ),

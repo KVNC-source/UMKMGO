@@ -1,7 +1,9 @@
+// lib/models/order.dart
 import 'cart_item.dart';
 
-// Model for a single item within a completed order
+// (OrderProductItem class remains unchanged)
 class OrderProductItem {
+  final String productId;
   final String name;
   final String imageUrl;
   final double price;
@@ -10,6 +12,7 @@ class OrderProductItem {
   final String shopName;
 
   OrderProductItem({
+    required this.productId,
     required this.name,
     required this.imageUrl,
     required this.price,
@@ -18,10 +21,10 @@ class OrderProductItem {
     required this.shopName,
   });
 
-  // Constructor to convert CartItem to OrderProductItem
   factory OrderProductItem.fromCartItem(CartItem item) {
     final unit = item.product.category.toLowerCase() == 'food' ? 'kg' : 'pcs';
     return OrderProductItem(
+      productId: item.product.id,
       name: item.product.name,
       imageUrl: item.product.imageUrl,
       price: item.product.price,
@@ -30,20 +33,45 @@ class OrderProductItem {
       shopName: item.product.shopName,
     );
   }
+
+  factory OrderProductItem.fromMap(Map<String, dynamic> map) {
+    return OrderProductItem(
+      productId: map['productId'] ?? '',
+      name: map['name'] ?? '',
+      imageUrl: map['imageUrl'] ?? '',
+      price: (map['price'] ?? 0).toDouble(),
+      quantity: (map['quantity'] ?? 0).toInt(),
+      unit: map['unit'] ?? '',
+      shopName: map['shopName'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'productId': productId,
+      'name': name,
+      'imageUrl': imageUrl,
+      'price': price,
+      'quantity': quantity,
+      'unit': unit,
+      'shopName': shopName,
+    };
+  }
 }
 
-// Model for the completed Order transaction
 class Order {
   final String orderId;
+  final String buyerId; // <<< NEW: Stores the Buyer's UID
   final DateTime date;
   final double totalAmount;
   final List<OrderProductItem> items;
   final String address;
   final String paymentMethod;
-  String status; // <<< REMOVED 'final' to allow updates
+  String status;
 
   Order({
     required this.orderId,
+    required this.buyerId, // <<< NEW
     required this.date,
     required this.totalAmount,
     required this.items,
@@ -51,4 +79,32 @@ class Order {
     required this.paymentMethod,
     this.status = 'Menunggu Pembayaran',
   });
+
+  factory Order.fromMap(Map<String, dynamic> map, String documentId) {
+    return Order(
+      orderId: map['orderId'] ?? documentId,
+      buyerId: map['buyerId'] ?? '', // <<< NEW
+      date: DateTime.parse(map['date']),
+      totalAmount: (map['totalAmount'] ?? 0).toDouble(),
+      address: map['address'] ?? '',
+      paymentMethod: map['paymentMethod'] ?? '',
+      status: map['status'] ?? 'Menunggu Pembayaran',
+      items: (map['items'] as List<dynamic>?)
+          ?.map((item) => OrderProductItem.fromMap(item))
+          .toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'orderId': orderId,
+      'buyerId': buyerId, // <<< NEW
+      'date': date.toIso8601String(),
+      'totalAmount': totalAmount,
+      'address': address,
+      'paymentMethod': paymentMethod,
+      'status': status,
+      'items': items.map((x) => x.toMap()).toList(),
+    };
+  }
 }

@@ -1,11 +1,17 @@
+// lib/views/seller/add_product_page.dart
+
+import 'dart:io'; // Needed for File
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // Needed for picking images
 import 'package:provider/provider.dart';
 import '../../models/product.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/auth_provider.dart';
 
 class AddProductPage extends StatefulWidget {
-  const AddProductPage({super.key});
+  final Product? productToEdit;
+
+  const AddProductPage({super.key, this.productToEdit});
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -14,108 +20,218 @@ class AddProductPage extends StatefulWidget {
 class _AddProductPageState extends State<AddProductPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for form fields
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _stockController = TextEditingController();
-  // We use a placeholder URL since image upload is not implemented
-  final _imageUrlController = TextEditingController(
-      text: 'https://placehold.co/600x400/00D100/FFFFFF?text=New+Product');
+  late TextEditingController _nameController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _priceController;
+  late TextEditingController _stockController;
+
+  // We no longer use a text controller for image URL input manually
+  // But we keep track of the existing URL if editing
+  String? _existingImageUrl;
+
+  // File variable to store the picked image
+  File? _pickedImageFile;
 
   String _selectedCategory = 'Food';
   final List<String> _categories = ['Food', 'Fashion', 'Crafts'];
 
+  bool _isInit = true;
+  bool _isLoading = false;
+
+  @override
+  void didChangeDependencies() {
+    if (_isInit) {
+      final product = widget.productToEdit;
+
+      _nameController = TextEditingController(text: product?.name ?? '');
+      _descriptionController = TextEditingController(text: product?.description ?? '');
+      _priceController = TextEditingController(text: product != null ? product.price.toStringAsFixed(0) : '');
+      _stockController = TextEditingController(text: product != null ? product.stock.toString() : '');
+
+      // Store the existing URL if we are editing
+      _existingImageUrl = product?.imageUrl;
+
+      if (product != null && _categories.contains(product.category)) {
+        _selectedCategory = product.category;
+      }
+
+      _isInit = false;
+    }
+    super.didChangeDependencies();
+  }
+
   @override
   void dispose() {
-    // Clean up controllers
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
     _stockController.dispose();
-    _imageUrlController.dispose();
     super.dispose();
   }
 
-  void _saveForm() {
-    // Validate the form
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+  // --- NEW: FUNCTION TO PICK IMAGE ---
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-      // Get providers (listen: false because we are in a method)
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImageFile = File(pickedFile.path);
+      });
+    }
+  }
+  // -----------------------------------
+
+  void _saveForm() async {
+    if (_formKey.currentState!.validate()) {
+      // VALIDATION: Ensure an image is provided (either new pick or existing URL)
+      if (_pickedImageFile == null && _existingImageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please pick an image for the product.')),
+        );
+        return;
+      }
+
+      _formKey.currentState!.save();
+      setState(() { _isLoading = true; });
+
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentUser = authProvider.currentUser;
 
-      // Get the shop name from the logged-in seller
-      // (This mock logic will be replaced by real auth data)
-      final String sellerShopName =
-      authProvider.currentUser?.email == 'seller@test.com'
-          ? 'Java Crafts'
-          : 'My New Shop';
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Not logged in')));
+        setState(() { _isLoading = false; });
+        return;
+      }
 
-      // Create the new Product object
-      final newProduct = Product(
-        name: _nameController.text,
-        description: _descriptionController.text,
-        imageUrl: _imageUrlController.text,
-        price: double.tryParse(_priceController.text) ?? 0.0,
-        category: _selectedCategory,
-        shopName: sellerShopName,
-        stock: int.tryParse(_stockController.text) ?? 0,
-      );
+      final String currentShopName = currentUser.shopName.isNotEmpty
+          ? currentUser.shopName : 'My Shop';
 
-      // Add product to the provider
-      productProvider.addProduct(newProduct);
+      try {
+        // 1. UPLOAD IMAGE IF A NEW ONE WAS PICKED
+        String finalImageUrl = _existingImageUrl ?? ''; // Default to existing
 
-      // Show success message and go back
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${newProduct.name} has been added.')),
-      );
-      Navigator.of(context).pop();
+        if (_pickedImageFile != null) {
+          finalImageUrl = await productProvider.uploadProductImage(_pickedImageFile!);
+        }
+
+        // 2. SAVE PRODUCT DATA
+        if (widget.productToEdit == null) {
+          // CREATE
+          final newProduct = Product(
+            sellerId: currentUser.uid,
+            name: _nameController.text,
+            description: _descriptionController.text,
+            imageUrl: finalImageUrl, // Use the uploaded URL
+            price: double.tryParse(_priceController.text) ?? 0.0,
+            category: _selectedCategory,
+            shopName: currentShopName,
+            stock: int.tryParse(_stockController.text) ?? 0,
+          );
+          await productProvider.addProduct(newProduct);
+        } else {
+          // UPDATE
+          final updatedProduct = Product(
+            id: widget.productToEdit!.id,
+            sellerId: widget.productToEdit!.sellerId,
+            name: _nameController.text,
+            description: _descriptionController.text,
+            imageUrl: finalImageUrl, // Use new URL if updated, else keep old
+            price: double.tryParse(_priceController.text) ?? 0.0,
+            category: _selectedCategory,
+            shopName: currentShopName,
+            stock: int.tryParse(_stockController.text) ?? 0,
+          );
+          await productProvider.updateProduct(widget.productToEdit!.id, updatedProduct);
+        }
+
+        if (mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(widget.productToEdit == null ? 'Product Added' : 'Product Updated')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      } finally {
+        if (mounted) setState(() { _isLoading = false; });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.productToEdit != null;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Product'),
+        title: Text(isEditing ? 'Edit Product' : 'Add New Product'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveForm,
+            icon: const Icon(Icons.check),
+            onPressed: _isLoading ? null : _saveForm,
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- IMAGE PICKER AREA ---
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey[400]!),
+                  ),
+                  child: _pickedImageFile != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(_pickedImageFile!, fit: BoxFit.cover),
+                  )
+                      : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(_existingImageUrl!, fit: BoxFit.cover),
+                  )
+                      : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_a_photo, size: 50, color: Colors.grey[600]),
+                      const SizedBox(height: 10),
+                      Text('Tap to add image', style: TextStyle(color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // -------------------------
+
               _buildTextFormField(
                 controller: _nameController,
                 label: 'Product Name',
                 icon: Icons.label_outline,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a product name';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.isEmpty) ? 'Please enter a name' : null,
               ),
               _buildTextFormField(
                 controller: _descriptionController,
                 label: 'Description',
                 icon: Icons.description_outlined,
                 maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.isEmpty) ? 'Please enter a description' : null,
               ),
               Row(
                 children: [
@@ -126,8 +242,8 @@ class _AddProductPageState extends State<AddProductPage> {
                       icon: Icons.attach_money,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Enter price';
-                        if (double.tryParse(value) == null) return 'Enter valid number';
+                        if (value == null || value.isEmpty) return 'Required';
+                        if (double.tryParse(value) == null) return 'Invalid number';
                         return null;
                       },
                     ),
@@ -140,8 +256,8 @@ class _AddProductPageState extends State<AddProductPage> {
                       icon: Icons.inventory_2_outlined,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Enter stock';
-                        if (int.tryParse(value) == null) return 'Enter valid number';
+                        if (value == null || value.isEmpty) return 'Required';
+                        if (int.tryParse(value) == null) return 'Invalid number';
                         return null;
                       },
                     ),
@@ -167,17 +283,6 @@ class _AddProductPageState extends State<AddProductPage> {
                   });
                 },
               ),
-              const SizedBox(height: 20),
-              // TODO: Replace this with an image picker (Firebase Storage)
-              _buildTextFormField(
-                controller: _imageUrlController,
-                label: 'Image URL',
-                icon: Icons.image_outlined,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Enter image URL';
-                  return null;
-                },
-              ),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
@@ -185,10 +290,10 @@ class _AddProductPageState extends State<AddProductPage> {
                 child: ElevatedButton(
                   onPressed: _saveForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Save Product'),
+                  child: Text(isEditing ? 'Update Product' : 'Upload Product'),
                 ),
               ),
             ],

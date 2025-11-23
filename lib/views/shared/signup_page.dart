@@ -1,6 +1,7 @@
+// lib/views/shared/signup_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// --- CORRECTED IMPORT ---
 import 'package:umkmgo/providers/auth_provider.dart';
 
 class SignupPage extends StatefulWidget {
@@ -12,25 +13,60 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
+  // --- KONTROLER BARU ---
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  // --------------------
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
 
-  void _handleSignup() {
+  void _handleSignup() async {
     if (_formKey.currentState!.validate()) {
+      setState(() { _isLoading = true; });
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // --- MOCK SIGNUP ---
-      authProvider.login('newuser@test.com', _passwordController.text);
+      try {
+        // --- PANGGIL FUNGSI SIGNUP YANG DIPERBARUI ---
+        await authProvider.signup(
+          _emailController.text,
+          _passwordController.text,
+          _nameController.text, // <<< KIRIM NAMA
+          _phoneController.text, // <<< KIRIM TELEPON
+        );
+
+        if (mounted) {
+          Navigator.of(context).pop(); // Tutup halaman signup
+        }
+      } catch (e) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Signup Gagal'),
+              content: Text(e.toString().split('] ').last),
+              actions: [
+                TextButton(
+                  child: const Text('OK'),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ],
+            ),
+          );
+        }
+      }
 
       if (mounted) {
-        Navigator.of(context).pop();
+        setState(() { _isLoading = false; });
       }
     }
   }
 
   @override
   void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -41,7 +77,7 @@ class _SignupPageState extends State<SignupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: const Text('Buat Akun'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -51,16 +87,46 @@ class _SignupPageState extends State<SignupPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Join UMKM Go',
+                'Gabung UMKM Go',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              Text(
-                'Sign up as a new buyer (uses mock email "newuser@test.com")',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+
+              // --- FORMULIR BARU ---
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Lengkap',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+                keyboardType: TextInputType.name,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Masukkan nama lengkap Anda';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Nomor Telepon',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Masukkan nomor telepon Anda';
+                  }
+                  return null;
+                },
+              ),
+              // --- AKHIR FORMULIR BARU ---
+
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -71,7 +137,7 @@ class _SignupPageState extends State<SignupPage> {
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   if (value == null || value.isEmpty || !value.contains('@')) {
-                    return 'Please enter a valid email';
+                    return 'Masukkan email yang valid';
                   }
                   return null;
                 },
@@ -87,7 +153,7 @@ class _SignupPageState extends State<SignupPage> {
                 obscureText: true,
                 validator: (value) {
                   if (value == null || value.isEmpty || value.length < 6) {
-                    return 'Password must be at least 6 characters';
+                    return 'Password minimal 6 karakter';
                   }
                   return null;
                 },
@@ -96,14 +162,14 @@ class _SignupPageState extends State<SignupPage> {
               TextFormField(
                 controller: _confirmPasswordController,
                 decoration: const InputDecoration(
-                  labelText: 'Confirm Password',
+                  labelText: 'Konfirmasi Password',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
                 obscureText: true,
                 validator: (value) {
                   if (value != _passwordController.text) {
-                    return 'Passwords do not match';
+                    return 'Password tidak cocok';
                   }
                   return null;
                 },
@@ -113,12 +179,14 @@ class _SignupPageState extends State<SignupPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _handleSignup,
+                  onPressed: _isLoading ? null : _handleSignup,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Sign Up'),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Daftar'),
                 ),
               )
             ],

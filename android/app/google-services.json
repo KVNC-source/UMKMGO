@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "488065606118",
+    "project_id": "umkm-vanker",
+    "storage_bucket": "umkm-vanker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:488065606118:android:b612acb48ed187f449f627",
+        "android_client_info": {
+          "package_name": "com.example.umkmgo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADKpq22mu91WZ7mwlVEIrfvDeCZ7z5KqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
