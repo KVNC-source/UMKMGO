@@ -18,7 +18,7 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController(); // [NEW]
+  final _confirmPasswordController = TextEditingController();
 
   // Seller specific controllers
   final _shopNameController = TextEditingController();
@@ -29,7 +29,7 @@ class _SignupPageState extends State<SignupPage> {
 
   // Password Visibility Toggles
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true; // [NEW]
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -37,7 +37,7 @@ class _SignupPageState extends State<SignupPage> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose(); // [NEW]
+    _confirmPasswordController.dispose();
     _shopNameController.dispose();
     _shopDescController.dispose();
     super.dispose();
@@ -324,8 +324,6 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  // --- WIDGET BUILDERS ---
-
   Widget _buildToggleButton(String text, bool isActive) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     return Expanded(
@@ -367,7 +365,7 @@ class _SignupPageState extends State<SignupPage> {
     bool isPassword = false,
     int maxLines = 1,
     String? Function(String?)? validator,
-    VoidCallback? onPasswordToggle, // [NEW] Callback for toggle
+    VoidCallback? onPasswordToggle,
   }) {
     return TextFormField(
       controller: controller,
@@ -382,7 +380,8 @@ class _SignupPageState extends State<SignupPage> {
         suffixIcon: isPassword
             ? IconButton(
           icon: Icon(
-            obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            // [CHANGED] Logic swapped here as well
+            obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.grey[500],
           ),
           onPressed: onPasswordToggle,

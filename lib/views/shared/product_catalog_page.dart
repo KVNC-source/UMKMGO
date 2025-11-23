@@ -35,8 +35,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      // [FIX] Dynamic background color
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
@@ -44,7 +47,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        backgroundColor: Colors.white,
+        // [FIX] Adapt background to theme
+        backgroundColor: isDark ? Theme.of(context).cardColor : Colors.white,
         elevation: 5,
         indicatorColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
         destinations: const [
@@ -92,8 +96,8 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
     final allProducts = productProvider.items;
-    final cart = Provider.of<CartProvider>(context);
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Filter Products
     List<Product> filteredProducts = _selectedCategory == 'All'
@@ -114,13 +118,14 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text(
                   "UMKMGO",
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    // [FIX] Dynamic text color
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -132,11 +137,12 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                // [FIX] Dynamic card color
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
@@ -147,8 +153,8 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
                 onChanged: (val) => setState(() => _searchQuery = val),
                 decoration: InputDecoration(
                   hintText: "Search Product",
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                  prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 ),
@@ -176,15 +182,18 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? primaryColor : Colors.white,
+                        // [FIX] Dynamic colors for active/inactive states
+                        color: isSelected ? primaryColor : Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
-                        border: isSelected ? null : Border.all(color: Colors.grey[300]!),
+                        border: isSelected ? null : Border.all(color: Theme.of(context).dividerColor),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         category,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[600],
+                          color: isSelected
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -204,9 +213,9 @@ class _ProductCatalogHomeState extends State<ProductCatalogHome> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search_off, size: 60, color: Colors.grey[300]),
+                  Icon(Icons.search_off, size: 60, color: Theme.of(context).colorScheme.outline),
                   const SizedBox(height: 10),
-                  Text("No products found", style: TextStyle(color: Colors.grey[500])),
+                  Text("No products found", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ],
               ),
             )
@@ -242,6 +251,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {
@@ -252,11 +262,12 @@ class ProductCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          // [FIX] Dynamic Card Color
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -270,7 +281,8 @@ class ProductCard extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  // [FIX] Dynamic placeholder color
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: ClipRRect(
@@ -279,7 +291,7 @@ class ProductCard extends StatelessWidget {
                     product.imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (ctx, err, stack) =>
-                        Center(child: Icon(Icons.image_not_supported, color: Colors.grey[400])),
+                        Center(child: Icon(Icons.image_not_supported, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ),
                 ),
               ),
@@ -295,10 +307,11 @@ class ProductCard extends StatelessWidget {
                     product.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.black87,
+                      // [FIX] Dynamic Text Color
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -308,7 +321,8 @@ class ProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      // [FIX] Dynamic Subtitle Color
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 8),

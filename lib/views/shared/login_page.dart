@@ -168,7 +168,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // --- REUSED TEXT FIELD WIDGET (Same as Signup) ---
+  // --- REUSED TEXT FIELD WIDGET ---
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -190,7 +190,10 @@ class _LoginPageState extends State<LoginPage> {
         suffixIcon: isPassword
             ? IconButton(
           icon: Icon(
-            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            // [CHANGED] Logic swapped here:
+            // If obscure (hidden) -> Show "Off" icon (Closed Eye)
+            // If visible -> Show "On" icon (Open Eye)
+            obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.grey[500],
           ),
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),

@@ -1,21 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-// --- IMPORTS ---
 import 'package:umkmgo/providers/theme_provider.dart';
 import 'package:umkmgo/providers/order_provider.dart';
 import 'package:umkmgo/providers/auth_provider.dart';
 import 'package:umkmgo/models/order.dart';
 import 'package:umkmgo/views/shared/manage_address_page.dart';
-
-// Import Seller Pages
 import 'package:umkmgo/views/seller/seller_dashboard.dart';
 import 'package:umkmgo/views/seller/manage_products_page.dart';
 import 'package:umkmgo/views/seller/view_orders_page.dart';
 
-// --- SUB-PAGES (EditProfile, PurchaseHistory) ---
-// (These classes remain unchanged, included for completeness)
-
+// --- EDIT PROFILE PAGE ---
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
   @override
@@ -50,12 +44,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       try {
-        await authProvider.updateUserProfile(_nameController.text, _phoneController.text);
+        await Provider.of<AuthProvider>(context, listen: false)
+            .updateUserProfile(_nameController.text, _phoneController.text);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil berhasil diperbarui!')));
           Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil berhasil diperbarui!')));
         }
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
@@ -68,25 +62,47 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profil'), elevation: 0.5),
+      appBar: AppBar(title: const Text('Edit Profil'), centerTitle: true),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              const Center(child: CircleAvatar(radius: 50, child: Icon(Icons.person, size: 60))),
-              const SizedBox(height: 30),
-              _buildTextField('Nama Lengkap', _nameController, Icons.person),
-              _buildTextField('Email', _emailController, Icons.email, readOnly: true),
-              _buildTextField('Nomor Telepon', _phoneController, Icons.phone, keyboardType: TextInputType.phone),
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(Icons.person, size: 60, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.camera_alt, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              _buildTextField('Nama Lengkap', _nameController, Icons.person_outline),
+              const SizedBox(height: 16),
+              _buildTextField('Email', _emailController, Icons.email_outlined, readOnly: true),
+              const SizedBox(height: 16),
+              _buildTextField('Nomor Telepon', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
               const SizedBox(height: 40),
               SizedBox(
-                width: double.infinity, height: 50,
-                child: ElevatedButton(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton(
                   onPressed: _isLoading ? null : _saveProfile,
-                  style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                  child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Simpan Perubahan'),
+                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  child: _isLoading
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white))
+                      : const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -97,52 +113,115 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool readOnly = false, TextInputType keyboardType = TextInputType.text}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: TextFormField(
-        controller: controller, readOnly: readOnly, keyboardType: keyboardType,
-        decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: readOnly, fillColor: readOnly ? Theme.of(context).cardColor : null),
-        validator: (value) => (label != 'Nomor Telepon' && (value == null || value.isEmpty)) ? 'Bidang ini tidak boleh kosong' : null,
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+        filled: true,
+        fillColor: readOnly
+            ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5)
+            : Theme.of(context).cardColor,
       ),
+      validator: (value) => (label != 'Nomor Telepon' && (value == null || value.isEmpty)) ? 'Bidang ini tidak boleh kosong' : null,
     );
   }
 }
 
+// --- PURCHASE HISTORY PAGE ---
 class PurchaseHistoryPage extends StatelessWidget {
   const PurchaseHistoryPage({super.key});
   String _formatRupiah(double amount) => 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   String _formatDate(DateTime date) => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed': return Colors.green;
+      case 'pending': return Colors.orange;
+      case 'cancelled': return Colors.red;
+      case 'shipping': return Colors.blue;
+      default: return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userId = authProvider.currentUser?.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Pembelian')),
-      body: userId == null ? const Center(child: Text('Silakan login.')) : StreamBuilder<List<Order>>(
-        stream: orderProvider.getUserOrders(userId),
+      appBar: AppBar(title: const Text('Riwayat Pembelian'), centerTitle: true),
+      body: userId == null
+          ? const Center(child: Text('Silakan login.'))
+          : StreamBuilder<List<Order>>(
+        stream: Provider.of<OrderProvider>(context, listen: false).getUserOrders(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final orders = snapshot.data ?? [];
-          if (orders.isEmpty) return const Center(child: Text('Belum ada pesanan.'));
-          return ListView.builder(
-            padding: const EdgeInsets.all(16), itemCount: orders.length,
+          if (orders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.shopping_bag_outlined, size: 80, color: Theme.of(context).colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text('Belum ada pesanan.', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: orders.length,
+            separatorBuilder: (ctx, i) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final order = orders[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 15), elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                child: Padding(
-                  padding: const EdgeInsets.all(15.0),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(order.orderId, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const Divider(),
-                    Text('Tanggal: ${_formatDate(order.date)}', style: TextStyle(color: Colors.grey.shade600)),
-                    Text('Total: ${_formatRupiah(order.totalAmount)}', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                    Text('Status: ${order.status}', style: TextStyle(color: Colors.green.shade700)),
-                  ]),
+              final statusColor = _getStatusColor(order.status);
+
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Order ID', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            Text('#${order.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                          child: Text(order.status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Tanggal', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            Text(_formatDate(order.date), style: const TextStyle(fontSize: 14)),
+                          ],
+                        ),
+                        Text(_formatRupiah(order.totalAmount), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.primary)),
+                      ],
+                    ),
+                  ],
                 ),
               );
             },
@@ -154,183 +233,159 @@ class PurchaseHistoryPage extends StatelessWidget {
 }
 
 // --- MAIN PROFILE PAGE ---
-
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
-
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
     final themeModel = Provider.of<ThemeProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final userRole = authProvider.userRole;
 
     return Scaffold(
-      // Use a slightly different background color to make the Cards pop
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0), // Consistent padding for the whole page
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. HEADER (Wrapped in a Card for proportion)
-              _buildProfileHeader(context, primaryColor, authProvider),
-
-              const SizedBox(height: 24),
-
-              // 2. SECTIONS (Each section is a Card group)
-              if (userRole == UserRole.seller)
-                _buildSectionGroup(
-                    context,
-                    'MANAJEMEN TOKO',
-                    [
-                      _buildListItem(context, Icons.storefront, 'Dashboard Saya', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SellerDashboardPage()))),
-                      _buildListItem(context, Icons.inventory_2_outlined, 'Manajemen Produk', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageProductsPage()))),
-                      _buildListItem(context, Icons.receipt_long, 'Lihat Pesanan', () => Navigator.push(context, MaterialPageRoute(builder: (context) => ViewOrdersPage()))),
-                    ]
-                ),
-
-              if (userRole == UserRole.buyer || userRole == UserRole.seller)
-                _buildSectionGroup(
-                    context,
-                    'AKUN',
-                    [
-                      _buildListItem(context, Icons.history, 'Riwayat Pembelian', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PurchaseHistoryPage()))),
-                      _buildListItem(context, Icons.location_on_outlined, 'Daftar Alamat', () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageAddressPage()))),
-                    ]
-                ),
-
-              _buildSectionGroup(
-                  context,
-                  'PENGATURAN',
-                  [
-                    _buildToggleItem(context, Icons.dark_mode_outlined, 'Mode Gelap', themeModel.isDarkMode, primaryColor, (v) => themeModel.setDarkMode(v)),
-                  ]
-              ),
-
-              const SizedBox(height: 20),
-
-              // 3. LOGOUT BUTTON
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => authProvider.logout(),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade50,
-                      foregroundColor: Colors.red.shade700,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.red.shade200)
-                      )
-                  ),
-                  child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
+      appBar: AppBar(
+        title: const Text('Profil Saya', style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
-    );
-  }
-
-  // Refined Header Component
-  Widget _buildProfileHeader(BuildContext context, Color primaryColor, AuthProvider authProvider) {
-    final userRole = authProvider.userRole;
-    final userEmail = authProvider.currentUser?.email ?? 'No Email';
-    final String userName = authProvider.currentUser?.name ?? ((userRole == UserRole.seller) ? 'Akun Penjual' : 'Akun Pembeli');
-
-    return Card(
-      elevation: 2,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 35, // Slightly smaller to balance with text
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  child: Icon(
-                      (userRole == UserRole.seller) ? Icons.storefront : Icons.person,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.primary
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded( // Prevents overflow
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(userName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-                        const SizedBox(height: 4),
-                        Text(userEmail, style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4)
+            _buildProfileHeader(context, authProvider),
+            const SizedBox(height: 30),
+
+            if (userRole == UserRole.seller)
+              _buildSectionGroup(context, 'MANAJEMEN TOKO', [
+                _buildListItem(context, Icons.dashboard_outlined, 'Dashboard Toko', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerDashboardPage()))),
+                _buildListItem(context, Icons.inventory_2_outlined, 'Produk Saya', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageProductsPage()))),
+                _buildListItem(context, Icons.receipt_long_outlined, 'Pesanan Masuk', () => Navigator.push(context, MaterialPageRoute(builder: (_) => ViewOrdersPage()))),
+              ]),
+
+            if (userRole == UserRole.buyer || userRole == UserRole.seller)
+              _buildSectionGroup(context, 'AKTIVITAS SAYA', [
+                _buildListItem(context, Icons.shopping_bag_outlined, 'Riwayat Pembelian', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchaseHistoryPage()))),
+                _buildListItem(context, Icons.location_on_outlined, 'Daftar Alamat', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageAddressPage()))),
+              ]),
+
+            _buildSectionGroup(context, 'PENGATURAN', [
+              _buildToggleItem(
+                  context,
+                  Icons.dark_mode_outlined,
+                  'Mode Gelap',
+                  themeModel.isDarkMode,
+                      (v) {
+                    // 1. Change the theme first
+                    themeModel.setDarkMode(v);
+
+                    // 2. Show popup/notification ONLY if turning ON (v == true)
+                    if (v) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.white),
+                              SizedBox(width: 10),
+                              Expanded(child: Text('Mode Gelap masih dalam pengembangan (WIP).')),
+                            ],
                           ),
-                          child: Text(
-                            userRole == UserRole.seller ? 'Seller' : 'Buyer',
-                            style: TextStyle(fontSize: 10, color: primaryColor, fontWeight: FontWeight.bold),
-                          ),
-                        )
-                      ]
-                  ),
+                          backgroundColor: Colors.orange.shade800,
+                          duration: const Duration(seconds: 3),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    }
+                  }
+              ),
+            ]),
+
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: () => authProvider.logout(),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.red.shade200),
+                  foregroundColor: Colors.red.shade400,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage())),
-                )
-              ],
+                icon: const Icon(Icons.logout),
+                label: const Text('Keluar Aplikasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  // Refined Section Group Component
+  Widget _buildProfileHeader(BuildContext context, AuthProvider authProvider) {
+    final userRole = authProvider.userRole;
+    final userName = authProvider.currentUser?.name ?? ((userRole == UserRole.seller) ? 'Akun Penjual' : 'Akun Pembeli');
+    final userEmail = authProvider.currentUser?.email ?? 'No Email';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 35,
+            backgroundColor: Theme.of(context).cardColor,
+            child: Icon((userRole == UserRole.seller) ? Icons.storefront : Icons.person, size: 36, color: Theme.of(context).colorScheme.primary),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(userName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimaryContainer)),
+              const SizedBox(height: 4),
+              Text(userEmail, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7))),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: Theme.of(context).cardColor.withOpacity(0.5), borderRadius: BorderRadius.circular(8)),
+                child: Text(userRole == UserRole.seller ? 'Penjual Terverifikasi' : 'Member', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+              )
+            ]),
+          ),
+          IconButton(
+            style: IconButton.styleFrom(backgroundColor: Theme.of(context).cardColor),
+            icon: Icon(Icons.edit, size: 20, color: Theme.of(context).colorScheme.primary),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionGroup(BuildContext context, String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-              title,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.outline,
-                  fontSize: 12,
-                  letterSpacing: 1.0
-              )
-          ),
+          padding: const EdgeInsets.only(left: 8, bottom: 10),
+          child: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, letterSpacing: 1.2)),
         ),
-        Card(
-          elevation: 0, // Flat card style
-          color: Theme.of(context).cardColor,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade200) // Subtle border
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: children,
-          ),
+          child: Column(children: children),
         ),
         const SizedBox(height: 24),
       ],
@@ -339,35 +394,29 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildListItem(BuildContext context, IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8)
-          ),
-          child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant)
-      ),
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-      trailing: const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Added vertical padding
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary)
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      trailing: Icon(Icons.chevron_right, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
     );
   }
 
-  Widget _buildToggleItem(BuildContext context, IconData icon, String title, bool value, Color activeColor, ValueChanged<bool> onChanged) {
+  Widget _buildToggleItem(BuildContext context, IconData icon, String title, bool value, ValueChanged<bool> onChanged) {
     return ListTile(
-      leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8)
-          ),
-          child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant)
-      ),
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-      trailing: Switch(value: value, onChanged: onChanged, activeColor: activeColor),
       onTap: () => onChanged(!value),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary)
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      trailing: Switch(value: value, onChanged: onChanged),
     );
   }
 }

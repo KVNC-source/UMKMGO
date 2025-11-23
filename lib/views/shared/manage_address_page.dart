@@ -37,27 +37,25 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text('Tambah Alamat Baru'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Tambah Alamat Baru', style: TextStyle(fontWeight: FontWeight.bold)),
           content: Form(
             key: _formKey,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildTextField(_labelController, 'Label (cth: Rumah, Kantor)'),
-                  _buildTextField(_streetController, 'Jalan & Nomor Rumah'),
-                  _buildTextField(_cityController, 'Kota & Kode Pos'),
-                  _buildTextField(_phoneController, 'Nomor Telepon', TextInputType.phone),
+                  _buildTextField(_labelController, 'Label', Icons.label_outline),
+                  _buildTextField(_streetController, 'Jalan & Nomor', Icons.map_outlined),
+                  _buildTextField(_cityController, 'Kota', Icons.location_city_outlined),
+                  _buildTextField(_phoneController, 'No. Telepon', Icons.phone_outlined, TextInputType.phone),
                 ],
               ),
             ),
           ),
           actions: [
-            TextButton(
-              child: const Text('Batal'),
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
-            ElevatedButton(
+            TextButton(child: const Text('Batal'), onPressed: () => Navigator.of(ctx).pop()),
+            FilledButton(
               child: const Text('Simpan'),
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
@@ -67,10 +65,7 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
                     'city': _cityController.text,
                     'phone': _phoneController.text,
                   };
-
-                  // Call provider with the Map
                   Provider.of<AuthProvider>(context, listen: false).addAddress(addressData);
-
                   Navigator.of(ctx).pop();
                 }
               },
@@ -81,14 +76,21 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, [TextInputType? keyboardType]) {
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType? keyboardType]) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType ?? TextInputType.text,
-        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
-        validator: (value) => (value == null || value.isEmpty) ? '$label wajib diisi' : null,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, size: 20),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Theme.of(context).cardColor, // Adapt to theme
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        validator: (value) => (value == null || value.isEmpty) ? 'Wajib diisi' : null,
       ),
     );
   }
@@ -97,54 +99,71 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // [FIX] Use the dedicated address list from provider
-        // This ensures the UI updates immediately when the stream changes
         final addresses = authProvider.userAddresses;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Daftar Alamat')),
+          appBar: AppBar(title: const Text('Daftar Alamat'), centerTitle: true),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Dark mode fix
           body: addresses.isEmpty
-              ? const Center(child: Text('Belum ada alamat.', style: TextStyle(fontSize: 16, color: Colors.grey)))
-              : ListView.builder(
-            padding: const EdgeInsets.all(8),
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.location_off_outlined, size: 80, color: Theme.of(context).colorScheme.outline),
+                const SizedBox(height: 16),
+                Text('Belum ada alamat tersimpan.', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          )
+              : ListView.separated(
+            padding: const EdgeInsets.all(20),
             itemCount: addresses.length,
+            separatorBuilder: (ctx, i) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final address = addresses[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                child: ListTile(
-                  leading: Icon(
-                    // Robust check for icon type
-                    address.label.toLowerCase().contains('rumah') ? Icons.home : Icons.business,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(address.label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${address.street}, ${address.city}\n${address.phone}'),
-                  isThreeLine: true,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Hapus Alamat?'),
-                          content: Text('Anda yakin ingin menghapus alamat "${address.label}"?'),
-                          actions: [
-                            TextButton(
-                              child: const Text('Batal'),
-                              onPressed: () => Navigator.of(ctx).pop(),
-                            ),
-                            TextButton(
-                              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-                              onPressed: () {
-                                authProvider.deleteAddress(address.id);
-                                Navigator.of(ctx).pop();
-                              },
-                            ),
+              final isHome = address.label.toLowerCase().contains('rumah') || address.label.toLowerCase().contains('home');
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor, // Dark mode fix
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(isHome ? Icons.home_rounded : Icons.business_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(address.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text('${address.street}, ${address.city}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              Icon(Icons.phone, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                              const SizedBox(width: 4),
+                              Text(address.phone, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            ]),
                           ],
                         ),
-                      );
-                    },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () => _showDeleteDialog(context, authProvider, address),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -152,10 +171,32 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: _showAddAddressDialog,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Colors.white,
             child: const Icon(Icons.add),
           ),
         );
       },
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, AuthProvider authProvider, Address address) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Alamat?'),
+        content: Text('Anda yakin ingin menghapus alamat "${address.label}"?'),
+        actions: [
+          TextButton(child: const Text('Batal'), onPressed: () => Navigator.of(ctx).pop()),
+          TextButton(
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              authProvider.deleteAddress(address.id);
+              Navigator.of(ctx).pop();
+            },
+          ),
+        ],
+      ),
     );
   }
 }

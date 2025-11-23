@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/product.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/wishlist_provider.dart'; //
 
 class ProductDetailPage extends StatelessWidget {
   final Product product;
@@ -16,6 +17,9 @@ class ProductDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    // Listen to WishlistProvider to update UI on change
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
+    final isFavorite = wishlistProvider.isFavorite(product);
 
     return Scaffold(
       body: Stack(
@@ -47,10 +51,12 @@ class ProductDetailPage extends StatelessWidget {
                   onTap: () => Navigator.pop(context),
                 ),
                 _buildCircularButton(
-                  icon: Icons.favorite_border,
-                  color: Colors.redAccent,
+                  // Dynamic Icon: Filled if favorite, Border if not
+                  icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                  // Dynamic Color: Red if favorite, Black/Grey if not
+                  color: isFavorite ? Colors.red : Colors.black87,
                   onTap: () {
-                    // Handle wishlist toggle
+                    wishlistProvider.toggleFavorite(product);
                   },
                 ),
               ],
@@ -125,14 +131,6 @@ class ProductDetailPage extends StatelessWidget {
                             onTap: () {
                               // Show full description dialog or bottom sheet
                             },
-                            child: Text(
-                              "Full description",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           ),
                         ],
                       ),
