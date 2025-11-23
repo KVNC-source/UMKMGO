@@ -105,6 +105,7 @@ class Order {
       'paymentMethod': paymentMethod,
       'status': status,
       'items': items.map((x) => x.toMap()).toList(),
+      'shopNames': items.map((x) => x.shopName).toSet().toList(),
     };
   }
 }

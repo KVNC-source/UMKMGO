@@ -17,8 +17,6 @@ import 'package:umkmgo/providers/auth_provider.dart';
 import 'package:umkmgo/views/shared/product_catalog_page.dart';
 import 'package:umkmgo/views/shared/login_page.dart';
 import 'package:umkmgo/views/admin/admin_dashboard.dart';
-// Jika Anda punya halaman Buyer/Seller, impor juga, contoh:
-// import 'package:umkmgo/views/shared/home_page_selector.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,64 +46,72 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeModel = Provider.of<ThemeProvider>(context);
 
-    // --- WARNA BARU ANDA DITERAPKAN DI SINI ---
-    const Color primaryColor = Color(0xFF4C763B); // <-- Warna hijau gelap yang Anda minta
-    const Color accentColor = Color(0xFF7D9A6D);  // Warna aksen yang lebih terang dan serasi
-    const Color darkErrorRed = Color(0xFFB00020);
-    // ------------------------------------
+    const Color primaryColor = Color(0xFF069E00);
+    const Color accentColor = Color(0xFF4DDB4D);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'UMKM Go',
       themeMode: themeModel.themeMode,
 
-      // --- TEMA TERANG (LIGHT THEME) ---
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor, // <-- Gunakan warna Anda
-          primary: primaryColor,   // <-- Gunakan warna Anda
-          secondary: accentColor,  // <-- Gunakan warna Anda
+          seedColor: primaryColor,
+          primary: primaryColor,
+          secondary: accentColor,
           background: const Color(0xFFF7F9F9),
           brightness: Brightness.light,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: primaryColor, // <-- Gunakan warna Anda
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           elevation: 2,
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: primaryColor, // <-- Gunakan warna Anda
+            backgroundColor: primaryColor,
             foregroundColor: Colors.white,
           ),
         ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+        ),
       ),
 
-      // --- TEMA GELAP (DARK THEME) ---
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,  // <-- Gunakan warna Anda
-          primary: primaryColor,    // <-- Gunakan warna Anda
-          secondary: accentColor,   // <-- Gunakan warna Anda
+          seedColor: primaryColor,
+          primary: primaryColor,
+          secondary: accentColor,
           background: const Color(0xFF121212),
           brightness: Brightness.dark,
         ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.black,
-          foregroundColor: primaryColor, // <-- Gunakan warna Anda
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF056600),
+          foregroundColor: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFF121212),
         cardColor: const Color(0xFF1E1E1E),
       ),
 
-      // Logika otentikasi Anda sudah benar, tidak perlu diubah.
       home: Consumer<AuthProvider>(
         builder: (context, auth, child) {
+          // 1. Show loading screen while fetching profile & role
+          if (auth.isLoading) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          // 2. Check Login State & Role
           if (auth.isLoggedIn) {
+            print("DEBUG: Main.dart - User Role is ${auth.userRole}");
+
             switch (auth.userRole) {
               case UserRole.admin:
                 return const AdminDashboard();

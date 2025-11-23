@@ -61,7 +61,6 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
               child: const Text('Simpan'),
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
-                  // FIX: Wrap the 4 strings into a SINGLE Map object
                   final addressData = {
                     'label': _labelController.text,
                     'street': _streetController.text,
@@ -88,7 +87,7 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType ?? TextInputType.text,
-        decoration: InputDecoration(labelText: label, border: OutlineInputBorder()),
+        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
         validator: (value) => (value == null || value.isEmpty) ? '$label wajib diisi' : null,
       ),
     );
@@ -98,7 +97,9 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        final addresses = authProvider.currentUser?.addresses ?? [];
+        // [FIX] Use the dedicated address list from provider
+        // This ensures the UI updates immediately when the stream changes
+        final addresses = authProvider.userAddresses;
 
         return Scaffold(
           appBar: AppBar(title: const Text('Daftar Alamat')),
@@ -113,7 +114,8 @@ class _ManageAddressPageState extends State<ManageAddressPage> {
                 margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 child: ListTile(
                   leading: Icon(
-                    address.label.toLowerCase() == 'rumah' ? Icons.home : Icons.business,
+                    // Robust check for icon type
+                    address.label.toLowerCase().contains('rumah') ? Icons.home : Icons.business,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   title: Text(address.label, style: const TextStyle(fontWeight: FontWeight.bold)),

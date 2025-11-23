@@ -1,17 +1,14 @@
 // lib/providers/product_provider.dart
 
-import 'dart:io'; // <<< IMPORT dart:io
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // <<< IMPORT STORAGE
 import '../models/product.dart';
 
 class ProductProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance; // <<< STORAGE INSTANCE
 
   List<Product> _items = [];
-
   List<Product> get items => _items;
 
   ProductProvider() {
@@ -27,27 +24,7 @@ class ProductProvider extends ChangeNotifier {
     });
   }
 
-  // --- NEW: UPLOAD IMAGE TO FIREBASE STORAGE ---
-  Future<String> uploadProductImage(File imageFile) async {
-    try {
-      // Create a unique filename based on timestamp
-      String fileName = DateTime.now().millisecondsSinceEpoch.toString();
-      // Create a reference to 'product_images/filename.jpg'
-      Reference ref = _storage.ref().child('product_images').child('$fileName.jpg');
-
-      // Upload the file
-      UploadTask uploadTask = ref.putFile(imageFile);
-      TaskSnapshot snapshot = await uploadTask;
-
-      // Get and return the download URL
-      String downloadUrl = await snapshot.ref.getDownloadURL();
-      return downloadUrl;
-    } catch (e) {
-      print("Error uploading image: $e");
-      throw Exception("Failed to upload image");
-    }
-  }
-  // ---------------------------------------------
+  // --- DATABASE OPERATIONS ONLY (Upload logic removed as per request) ---
 
   Future<void> addProduct(Product product) async {
     try {
@@ -80,7 +57,6 @@ class ProductProvider extends ChangeNotifier {
     return _items.where((product) => product.sellerId == uid).toList();
   }
 
-  // Helper for buyer view
   List<Product> getProductsByShop(String shopName) {
     return _items.where((product) => product.shopName == shopName).toList();
   }

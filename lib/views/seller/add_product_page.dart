@@ -1,8 +1,6 @@
 // lib/views/seller/add_product_page.dart
 
-import 'dart:io'; // Needed for File
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Needed for picking images
 import 'package:provider/provider.dart';
 import '../../models/product.dart';
 import '../../providers/product_provider.dart';
@@ -25,12 +23,11 @@ class _AddProductPageState extends State<AddProductPage> {
   late TextEditingController _priceController;
   late TextEditingController _stockController;
 
-  // We no longer use a text controller for image URL input manually
-  // But we keep track of the existing URL if editing
-  String? _existingImageUrl;
+  // Controller for pasting the link manually
+  late TextEditingController _imageUrlController;
 
-  // File variable to store the picked image
-  File? _pickedImageFile;
+  String? _existingImageUrl;
+  // REMOVED: File? _pickedImageFile;
 
   String _selectedCategory = 'Food';
   final List<String> _categories = ['Food', 'Fashion', 'Crafts'];
@@ -48,7 +45,9 @@ class _AddProductPageState extends State<AddProductPage> {
       _priceController = TextEditingController(text: product != null ? product.price.toStringAsFixed(0) : '');
       _stockController = TextEditingController(text: product != null ? product.stock.toString() : '');
 
-      // Store the existing URL if we are editing
+      // Initialize URL controller
+      _imageUrlController = TextEditingController(text: product?.imageUrl ?? '');
+
       _existingImageUrl = product?.imageUrl;
 
       if (product != null && _categories.contains(product.category)) {
@@ -66,32 +65,31 @@ class _AddProductPageState extends State<AddProductPage> {
     _descriptionController.dispose();
     _priceController.dispose();
     _stockController.dispose();
+    _imageUrlController.dispose();
     super.dispose();
   }
 
-  // --- NEW: FUNCTION TO PICK IMAGE ---
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  // --- HELPER: CONVERT DRIVE LINK TO DIRECT IMAGE LINK ---
+  String _convertDriveUrl(String url) {
+    // 1. Check if it's a standard "view" link
+    // Pattern: /file/d/FILE_ID/view
+    final RegExp regExp = RegExp(r'\/file\/d\/([a-zA-Z0-9_-]+)\/?');
+    final match = regExp.firstMatch(url);
 
-    if (pickedFile != null) {
-      setState(() {
-        _pickedImageFile = File(pickedFile.path);
-      });
+    if (match != null && match.groupCount >= 1) {
+      final fileId = match.group(1);
+      // Return the direct download/view URL format
+      return 'https://drive.google.com/uc?export=view&id=$fileId';
     }
+
+    // If it doesn't match, return original (maybe it's already correct or hosted elsewhere)
+    return url;
   }
-  // -----------------------------------
+
+  // REMOVED: _pickImage() function
 
   void _saveForm() async {
     if (_formKey.currentState!.validate()) {
-      // VALIDATION: Ensure an image is provided (either new pick or existing URL)
-      if (_pickedImageFile == null && _existingImageUrl == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please pick an image for the product.')),
-        );
-        return;
-      }
-
       _formKey.currentState!.save();
       setState(() { _isLoading = true; });
 
@@ -109,41 +107,41 @@ class _AddProductPageState extends State<AddProductPage> {
           ? currentUser.shopName : 'My Shop';
 
       try {
-        // 1. UPLOAD IMAGE IF A NEW ONE WAS PICKED
-        String finalImageUrl = _existingImageUrl ?? ''; // Default to existing
+        String finalImageUrl = '';
 
-        if (_pickedImageFile != null) {
-          finalImageUrl = await productProvider.uploadProductImage(_pickedImageFile!);
+        // PRIORITY 1: Manual URL (The Google Drive Link)
+        if (_imageUrlController.text.isNotEmpty) {
+          // Convert raw Drive link to direct link before saving
+          finalImageUrl = _convertDriveUrl(_imageUrlController.text);
+        }
+        // PRIORITY 2: Existing URL (if editing)
+        else {
+          finalImageUrl = _existingImageUrl ?? '';
         }
 
-        // 2. SAVE PRODUCT DATA
+        if (finalImageUrl.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide an image URL')));
+          setState(() { _isLoading = false; });
+          return;
+        }
+
+        // CREATE OR UPDATE
+        final newProduct = Product(
+          id: widget.productToEdit?.id ?? '', // Empty for new
+          sellerId: widget.productToEdit?.sellerId ?? currentUser.uid,
+          name: _nameController.text,
+          description: _descriptionController.text,
+          imageUrl: finalImageUrl,
+          price: double.tryParse(_priceController.text) ?? 0.0,
+          category: _selectedCategory,
+          shopName: currentShopName,
+          stock: int.tryParse(_stockController.text) ?? 0,
+        );
+
         if (widget.productToEdit == null) {
-          // CREATE
-          final newProduct = Product(
-            sellerId: currentUser.uid,
-            name: _nameController.text,
-            description: _descriptionController.text,
-            imageUrl: finalImageUrl, // Use the uploaded URL
-            price: double.tryParse(_priceController.text) ?? 0.0,
-            category: _selectedCategory,
-            shopName: currentShopName,
-            stock: int.tryParse(_stockController.text) ?? 0,
-          );
           await productProvider.addProduct(newProduct);
         } else {
-          // UPDATE
-          final updatedProduct = Product(
-            id: widget.productToEdit!.id,
-            sellerId: widget.productToEdit!.sellerId,
-            name: _nameController.text,
-            description: _descriptionController.text,
-            imageUrl: finalImageUrl, // Use new URL if updated, else keep old
-            price: double.tryParse(_priceController.text) ?? 0.0,
-            category: _selectedCategory,
-            shopName: currentShopName,
-            stock: int.tryParse(_stockController.text) ?? 0,
-          );
-          await productProvider.updateProduct(widget.productToEdit!.id, updatedProduct);
+          await productProvider.updateProduct(widget.productToEdit!.id, newProduct);
         }
 
         if (mounted) {
@@ -167,6 +165,18 @@ class _AddProductPageState extends State<AddProductPage> {
     final isEditing = widget.productToEdit != null;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
+    // Determine what image to show in preview
+    ImageProvider? imagePreview;
+
+    // REMOVED: _pickedImageFile logic
+
+    if (_imageUrlController.text.isNotEmpty) {
+      // Use the converted link for preview
+      imagePreview = NetworkImage(_convertDriveUrl(_imageUrlController.text));
+    } else if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty) {
+      imagePreview = NetworkImage(_existingImageUrl!);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Product' : 'Add New Product'),
@@ -186,39 +196,42 @@ class _AddProductPageState extends State<AddProductPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- IMAGE PICKER AREA ---
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey[400]!),
-                  ),
-                  child: _pickedImageFile != null
-                      ? ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.file(_pickedImageFile!, fit: BoxFit.cover),
-                  )
-                      : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
-                      ? ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(_existingImageUrl!, fit: BoxFit.cover),
-                  )
-                      : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo, size: 50, color: Colors.grey[600]),
-                      const SizedBox(height: 10),
-                      Text('Tap to add image', style: TextStyle(color: Colors.grey[600])),
-                    ],
-                  ),
+              // --- IMAGE PREVIEW AREA ---
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey[400]!),
                 ),
+                child: imagePreview != null
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image(
+                    image: imagePreview,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
+                  ),
+                )
+                    : Center(child: Icon(Icons.image, size: 50, color: Colors.grey[400])),
               ),
+              const SizedBox(height: 10),
+
+              // --- PASTE URL FIELD ---
+              _buildTextFormField(
+                controller: _imageUrlController,
+                label: 'Paste Google Drive Link Here',
+                icon: Icons.link,
+                onChanged: (val) {
+                  // Trigger rebuild to update preview image
+                  setState(() {});
+                },
+              ),
+
+              // REMOVED: Upload Button and "- OR -" text
+
               const SizedBox(height: 20),
-              // -------------------------
 
               _buildTextFormField(
                 controller: _nameController,
@@ -293,7 +306,7 @@ class _AddProductPageState extends State<AddProductPage> {
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                   ),
-                  child: Text(isEditing ? 'Update Product' : 'Upload Product'),
+                  child: Text(isEditing ? 'Update Product' : 'Save Product'),
                 ),
               ),
             ],
@@ -310,6 +323,7 @@ class _AddProductPageState extends State<AddProductPage> {
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    void Function(String)? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -317,6 +331,7 @@ class _AddProductPageState extends State<AddProductPage> {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),

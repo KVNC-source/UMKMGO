@@ -11,9 +11,15 @@ class OrderProvider extends ChangeNotifier {
     return _firestore.collection('users').doc(userId).collection('orders').orderBy('date', descending: true).snapshots().map((snapshot) => snapshot.docs.map((doc) => Order.fromMap(doc.data(), doc.id)).toList());
   }
   Stream<List<Order>> getShopOrders(String shopName) {
-    return _firestore.collection('orders').orderBy('date', descending: true).snapshots().map((snapshot) { return snapshot.docs.map((doc) => Order.fromMap(doc.data(), doc.id)).where((order) => order.items.any((item) => item.shopName == shopName)).toList(); });
+    return _firestore
+        .collection('orders')
+        .where('shopNames', arrayContains: shopName)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => Order.fromMap(doc.data(), doc.id)).toList();
+    });
   }
-
   Future<void> placeOrder(Order order, String userId) async {
     final batch = _firestore.batch();
 
